@@ -142,19 +142,18 @@ def parse_weather_from_web():
 
 
 def get_weather():
-    """获取天气预报 - 优先从网页获取，失败则用API"""
-    try:
-        print("尝试从 weather.com 获取天气数据...")
-        return parse_weather_from_web()
-    except Exception as e:
-        print(f"网页获取失败: {e}")
-        print("尝试使用豆包API...")
+    """获取天气预报 - 优先使用豆包API"""
+    # 优先使用豆包API（更准确）
+    if DOUBAO_API_KEY:
+        try:
+            print("尝试使用豆包API获取天气...")
+            return get_weather_from_api()
+        except Exception as e:
+            print(f"豆包API失败: {e}")
 
-        # 备用：使用豆包API
-        if not DOUBAO_API_KEY:
-            raise RuntimeError("天气.com获取失败，且未配置豆包API")
-
-        return get_weather_from_api()
+    # 备用：从 weather.com 获取
+    print("尝试从 weather.com 获取天气数据...")
+    return parse_weather_from_web()
 
 
 def get_weather_from_api():
