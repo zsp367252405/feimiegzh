@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import time
 import requests
 
 # 从环境变量获取配置
@@ -54,7 +55,18 @@ def get_weather():
         "temperature": 0.2,
     }
 
-    resp = requests.post(DOUBAO_URL, headers=headers, json=data, timeout=60)
+    # 添加重试机制
+    for attempt in range(3):
+        try:
+            resp = requests.post(DOUBAO_URL, headers=headers, json=data, timeout=120)
+            break
+        except requests.exceptions.Timeout:
+            if attempt < 2:
+                print(f"请求超时，{attempt+1}秒后重试...")
+                time.sleep(attempt + 1)
+            else:
+                raise RuntimeError("请求超时，已重试3次")
+
     if not resp.ok:
         raise RuntimeError(f"DOUBAO HTTP {resp.status_code}: {resp.text}")
 
