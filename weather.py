@@ -16,17 +16,17 @@ WEATHER_URL = "https://weather.com/zh-SG/weather/hourbyhour/l/42f0a76cf8c76f1a87
 WEATHER_DESC = {
     "sunny": "晴",
     "mostly sunny": "晴",
-    "partly cloudy": "多云",
-    "mostly cloudy": "多云",
+    "partly cloudy": "晴云",
+    "mostly cloudy": "云阴",
     "cloudy": "阴",
     "clear": "晴",
     "rain": "雨",
     "light rain": "小雨",
     "heavy rain": "大雨",
-    "thunderstorms": "雷阵雨",
+    "thunderstorms": "雷雨",
     "snow": "雪",
     "fog": "雾",
-    "wind": "大风",
+    "wind": "风",
 }
 
 
@@ -186,8 +186,8 @@ def get_weather_from_api():
 晴 ☀️
 多云 ⛅
 阴 ☁️
-晴转多云 🌤
-多云转阴 🌥
+晴云 🌤
+云阴 🌥
 小雨 🌦
 中雨 🌧
 大雨 🌨
