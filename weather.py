@@ -12,6 +12,33 @@ SERVER_CHAN_KEY = os.getenv("SERVER_CHAN_KEY")
 
 WEATHER_URL = "https://weather.com/zh-SG/weather/hourbyhour/l/42f0a76cf8c76f1a87a8e0c2c62b2997b17f9628c03ff9103b8487a194dba6df"
 
+# 天气描述映射到中文
+WEATHER_DESC = {
+    "sunny": "晴",
+    "mostly sunny": "晴",
+    "partly cloudy": "多云",
+    "mostly cloudy": "多云",
+    "cloudy": "阴",
+    "clear": "晴",
+    "rain": "雨",
+    "light rain": "小雨",
+    "heavy rain": "大雨",
+    "thunderstorms": "雷阵雨",
+    "snow": "雪",
+    "fog": "雾",
+    "wind": "大风",
+}
+
+
+def get_weather_desc(desc):
+    """根据天气描述返回中文"""
+    desc = desc.lower()
+    for key, text in WEATHER_DESC.items():
+        if key in desc:
+            return text
+    return "多云"
+
+
 # 天气图标映射
 WEATHER_ICONS = {
     "sunny": "☀️",
@@ -101,7 +128,6 @@ def parse_weather_from_web():
             unit = hour_data.get("temp", {}).get("unit", "C")
             precip = hour_data.get("precipChance", {}).get("value", "0")
             wx_phrase = hour_data.get("wxPhraseLong", "")
-            cloud_cover = hour_data.get("cloudCover", {}).get("value", "")
 
             # 提取小时数
             hour_match = re.search(r'(\d{1,2}):00', time_str)
@@ -110,26 +136,11 @@ def parse_weather_from_web():
             else:
                 continue
 
+            # 转换天气描述为中文
+            weather_desc = get_weather_desc(wx_phrase)
             icon = get_weather_icon(wx_phrase)
 
-            # 转换云量
-            if cloud_cover:
-                try:
-                    cc = int(cloud_cover)
-                    if cc <= 20:
-                        cloud = "晴"
-                    elif cc <= 50:
-                        cloud = "少云"
-                    elif cc <= 80:
-                        cloud = "多云"
-                    else:
-                        cloud = "阴"
-                except:
-                    cloud = cloud_cover if cloud_cover else "多云"
-            else:
-                cloud = "多云"
-
-            line1 = f"{hour:02d}:00  {icon}"
+            line1 = f"{hour:02d}:00 {weather_desc}{icon}"
             line2 = f"温度{temp}°{unit}  降雨{precip}%"
             results.append(line1)
             results.append(line2)
@@ -168,7 +179,7 @@ def get_weather_from_api():
 严格按下面格式输出，不要多余文字，不要解释，只输出预报：
 
 请按以下格式输出，每小时2行：
-第一行：时间  天气  图标
+第一行：06:00 晴☀️
 第二行：温度21°C  降雨1%
 
 使用下面固定图标，不能用其他：
