@@ -1,28 +1,17 @@
 # -*- coding: utf-8 -*-
-import os
 import requests
+import time
 
-# 从环境变量获取配置
-DOUBAO_API_KEY = os.getenv("DOUBAO_API_KEY")
-FEISHU_WEBHOOK = os.getenv("FEISHU_WEBHOOK")
-SERVER_CHAN_KEY = os.getenv("SERVER_CHAN_KEY")
+# 配置 - 直接写死密钥
+DOUBAO_API_KEY = "ec271d52-563f-4813-9e7d-d0cb6e697b06"
+FEISHU_WEBHOOK = "https://open.feishu.cn/open-apis/bot/v2/hook/a730d3fb-b3e3-44e8-828f-f51a22482f71"
 
 DOUBAO_URL = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
 MODEL = "doubao-seed-2-0-pro-260215"
 
 
-def require_env(name):
-    """检查环境变量是否存在"""
-    val = os.getenv(name)
-    if not val or not val.strip():
-        raise RuntimeError(f"Missing environment variable: {name}")
-    return val.strip()
-
-
 def get_weather():
     """获取天气预报"""
-    api_key = require_env("DOUBAO_API_KEY")
-
     prompt = """
 你是专业天气预报员。
 请生成 厦门市同安区 大同街道 & 祥平街道 今天 06:00~明天 06:00 逐小时天气预报。
@@ -44,7 +33,7 @@ def get_weather():
 """.strip()
 
     headers = {
-        "Authorization": f"Bearer {api_key}",
+        "Authorization": f"Bearer {DOUBAO_API_KEY}",
         "Content-Type": "application/json",
     }
 
@@ -67,35 +56,15 @@ def get_weather():
 
 def send_feishu(content):
     """发送到飞书"""
-    webhook = require_env("FEISHU_WEBHOOK")
-
     msg = {
         "msg_type": "text",
         "content": {
             "text": f"🌤 厦门同安 每日天气预报（06:00-次日06:00）\n\n{content}"
         },
     }
-    resp = requests.post(webhook, json=msg, timeout=30)
+    resp = requests.post(FEISHU_WEBHOOK, json=msg, timeout=30)
     if not resp.ok:
         raise RuntimeError(f"FEISHU HTTP {resp.status_code}: {resp.text}")
-
-
-def send_server_chan(content):
-    """发送到 Server 酱（微信推送）"""
-    key = require_env("SERVER_CHAN_KEY")
-
-    url = f"https://sctapi.ftqq.com/{key}.send"
-
-    data = {
-        "title": "🌤 厦门同安每日天气预报（06:00-次日06:00）",
-        "desp": content
-    }
-
-    resp = requests.post(url, data=data, timeout=30)
-    result = resp.json()
-
-    if result.get("code") != 0:
-        raise RuntimeError(f"Server酱推送失败: {result.get('message')}")
 
 
 def main():
@@ -105,19 +74,9 @@ def main():
     weather = get_weather()
     print("天气获取成功")
 
-    # 发送到飞书
-    if FEISHU_WEBHOOK:
-        print("正在发送到飞书...")
-        send_feishu(weather)
-        print("✅ 飞书发送成功")
-
-    # 发送到 Server 酱
-    if SERVER_CHAN_KEY:
-        print("正在发送到微信（Server酱）...")
-        send_server_chan(weather)
-        print("✅ 微信发送成功")
-
-    print("\n天气内容：")
+    print("正在发送到飞书...")
+    send_feishu(weather)
+    print("✅ 飞书发送成功")
     print(weather)
 
 

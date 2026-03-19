@@ -9,9 +9,9 @@ import os
 import json
 import time
 
-# 微信公众号配置（从环境变量读取，保证安全性）
-APP_ID = os.getenv("WX_APP_ID", "wx7d8e57fe8e17466c")
-APP_SECRET = os.getenv("WX_APP_SECRET", "d8d727b09431ee7af2829d5632d9a263")
+# 微信公众号配置 - 直接写死
+APP_ID = "wx7d8e57fe8e17466c"
+APP_SECRET = "d8d727b09431ee7af2829d5632d9a263"
 
 # 微信API地址
 ACCESS_TOKEN_URL = "https://api.weixin.qq.com/cgi-bin/token"

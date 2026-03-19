@@ -3,7 +3,7 @@ name: Weather Bot
 on:
   workflow_dispatch:
   schedule:
-    # 每天 22:00 UTC（中国时间次日 06:00，夏季）
+    # 每天 22:00 UTC（中国时间次日 06:00）
     - cron: "0 22 * * *"
 
 jobs:
@@ -28,4 +28,5 @@ jobs:
         env:
           DOUBAO_API_KEY: ${{ secrets.DOUBAO_API_KEY }}
           FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
+          SERVER_CHAN_KEY: ${{ secrets.SERVER_CHAN_KEY }}
         run: python weather.py
