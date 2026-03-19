@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
+import re
+import json
 import time
 import requests
 
@@ -8,20 +10,155 @@ DOUBAO_API_KEY = os.getenv("DOUBAO_API_KEY")
 FEISHU_WEBHOOK = os.getenv("FEISHU_WEBHOOK")
 SERVER_CHAN_KEY = os.getenv("SERVER_CHAN_KEY")
 
-DOUBAO_URL = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
-MODEL = "doubao-seed-2-0-pro-260215"
+WEATHER_URL = "https://weather.com/zh-SG/weather/hourbyhour/l/42f0a76cf8c76f1a87a8e0c2c62b2997b17f9628c03ff9103b8487a194dba6df"
+
+# 天气图标映射
+WEATHER_ICONS = {
+    "sunny": "☀️",
+    "mostly sunny": "☀️",
+    "partly cloudy": "⛅",
+    "mostly cloudy": "🌥",
+    "cloudy": "☁️",
+    "clear": "☀️",
+    "rain": "🌧",
+    "light rain": "🌦",
+    "heavy rain": "🌨",
+    "thunderstorms": "⛈",
+    "snow": "❄️",
+    "fog": "🌫",
+    "wind": "💨",
+}
+
+# 天气描述映射到图标
+def get_weather_icon(desc):
+    """根据天气描述返回图标"""
+    desc = desc.lower()
+    for key, icon in WEATHER_ICONS.items():
+        if key in desc:
+            return icon
+    return "☁️"
 
 
-def require_env(name):
-    """检查环境变量是否存在"""
-    val = os.getenv(name)
-    if not val or not val.strip():
-        raise RuntimeError(f"Missing environment variable: {name}")
-    return val.strip()
+def parse_weather_from_web():
+    """从 weather.com 网页获取天气数据"""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+    }
+
+    for attempt in range(3):
+        try:
+            resp = requests.get(WEATHER_URL, headers=headers, timeout=30)
+            break
+        except requests.exceptions.Timeout:
+            if attempt < 2:
+                print(f"请求超时，重试 {attempt + 1}/3...")
+                time.sleep(2)
+            else:
+                raise RuntimeError("获取天气页面失败")
+
+    if not resp.ok:
+        raise RuntimeError(f"HTTP {resp.status_code}")
+
+    html = resp.text
+
+    # 尝试从页面中提取 JSON 数据
+    # weather.com 会在页面中嵌入小时预报数据
+    pattern = r'window\.\w+\s*=\s*(\{.*?"hourlyForecast".*?\})'
+    match = re.search(pattern, html)
+
+    if not match:
+        # 尝试另一种模式
+        pattern2 = r'"hourlyForecast"\s*:\s*(\[.*?\])'
+        match = re.search(pattern2, html)
+
+    if not match:
+        raise RuntimeError("无法解析天气数据，页面结构可能已变化")
+
+    try:
+        # 提取并解析 JSON
+        json_str = match.group(1) if match.lastindex else match.group(0)
+        # 修复 JSON 格式问题
+        json_str = re.sub(r'([{,])(\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\3":', json_str)
+        data = json.loads(json_str)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"JSON 解析失败: {e}")
+
+    # 提取小时预报
+    hourly = data.get("hourlyForecast", []) if isinstance(data, dict) else data
+
+    if not hourly:
+        raise RuntimeError("未找到小时预报数据")
+
+    # 构建天气信息
+    results = []
+    now_hour = time.localtime().tm_hour
+
+    for hour_data in hourly[:25]:  # 取25小时数据
+        try:
+            time_str = hour_data.get("time", "")
+            temp = hour_data.get("temp", {}).get("value", "")
+            unit = hour_data.get("temp", {}).get("unit", "C")
+            precip = hour_data.get("precipChance", {}).get("value", "0")
+            wx_phrase = hour_data.get("wxPhraseLong", "")
+            cloud_cover = hour_data.get("cloudCover", {}).get("value", "")
+
+            # 提取小时数
+            hour_match = re.search(r'(\d{1,2}):00', time_str)
+            if hour_match:
+                hour = int(hour_match.group(1))
+            else:
+                continue
+
+            icon = get_weather_icon(wx_phrase)
+
+            # 转换云量
+            if cloud_cover:
+                try:
+                    cc = int(cloud_cover)
+                    if cc <= 20:
+                        cloud = "晴"
+                    elif cc <= 50:
+                        cloud = "少云"
+                    elif cc <= 80:
+                        cloud = "多云"
+                    else:
+                        cloud = "阴"
+                except:
+                    cloud = cloud_cover if cloud_cover else "多云"
+            else:
+                cloud = "多云"
+
+            line = f"{hour:02d}:00  {icon}  {temp}°{unit}  降雨{precip}%  {cloud}"
+            results.append(line)
+
+        except Exception as e:
+            continue
+
+    if not results:
+        raise RuntimeError("未能解析任何天气数据")
+
+    return "\n".join(results)
 
 
 def get_weather():
-    """获取天气预报"""
+    """获取天气预报 - 优先从网页获取，失败则用API"""
+    try:
+        print("尝试从 weather.com 获取天气数据...")
+        return parse_weather_from_web()
+    except Exception as e:
+        print(f"网页获取失败: {e}")
+        print("尝试使用豆包API...")
+
+        # 备用：使用豆包API
+        if not DOUBAO_API_KEY:
+            raise RuntimeError("天气.com获取失败，且未配置豆包API")
+
+        return get_weather_from_api()
+
+
+def get_weather_from_api():
+    """从豆包API获取天气预报"""
     api_key = require_env("DOUBAO_API_KEY")
 
     prompt = """
@@ -54,19 +191,23 @@ def get_weather():
     }
 
     data = {
-        "model": MODEL,
+        "model": "doubao-seed-2-0-pro-260215",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.2,
     }
 
-    # 添加重试机制
     for attempt in range(3):
         try:
-            resp = requests.post(DOUBAO_URL, headers=headers, json=data, timeout=120)
+            resp = requests.post(
+                "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
+                headers=headers,
+                json=data,
+                timeout=120
+            )
             break
         except requests.exceptions.Timeout:
             if attempt < 2:
-                print(f"请求超时，{attempt+1}秒后重试...")
+                print(f"请求超时，重试 {attempt + 1}/3...")
                 time.sleep(attempt + 1)
             else:
                 raise RuntimeError("请求超时，已重试3次")
@@ -79,6 +220,14 @@ def get_weather():
         raise RuntimeError(f"DOUBAO error: {resp_json['error']}")
 
     return resp_json["choices"][0]["message"]["content"]
+
+
+def require_env(name):
+    """检查环境变量是否存在"""
+    val = os.getenv(name)
+    if not val or not val.strip():
+        raise RuntimeError(f"Missing environment variable: {name}")
+    return val.strip()
 
 
 def send_feishu(content):
