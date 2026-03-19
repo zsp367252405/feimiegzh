@@ -140,7 +140,7 @@ def parse_weather_from_web():
             weather_desc = get_weather_desc(wx_phrase)
             icon = get_weather_icon(wx_phrase)
 
-            line1 = f"{hour:02d}:00 {weather_desc}{icon}"
+            line1 = f"【{hour:02d}:00】{weather_desc}{icon}"
             line2 = f"温度{temp}°{unit}  降雨{precip}%"
             results.append(line1)
             results.append(line2)
@@ -179,7 +179,7 @@ def get_weather_from_api():
 严格按下面格式输出，不要多余文字，不要解释，只输出预报：
 
 请按以下格式输出，每小时2行：
-第一行：06:00 晴☀️
+第一行：【06:00】晴☀️
 第二行：温度21°C  降雨1%
 
 使用下面固定图标，不能用其他：
