@@ -129,7 +129,7 @@ def parse_weather_from_web():
             else:
                 cloud = "多云"
 
-            line = f"{hour:02d}:00  {icon}  {temp}°{unit}  降雨{precip}%  {cloud}"
+            line = f"{hour:02d}:00  {icon}  {temp}°{unit}  降雨{precip}%"
             results.append(line)
 
         except Exception as e:
@@ -165,7 +165,7 @@ def get_weather_from_api():
 请生成 厦门市同安区 大同街道 & 祥平街道 今天 06:00~明天 06:00 逐小时天气预报。
 严格按下面格式输出，不要多余文字，不要解释，只输出预报：
 
-时间  天气  图标  温度  降雨概率  云量
+时间  天气  图标  温度  降雨概率
 使用下面固定图标，不能用其他：
 晴 ☀️
 多云 ⛅
@@ -178,7 +178,6 @@ def get_weather_from_api():
 雷阵雨 ⛈
 
 降雨概率：0-100%
-云量：晴/少云/多云/阴
 温度：摄氏度，如 25℃
 
 只输出 06:00—次日06:00，逐小时一条，格式工整。
