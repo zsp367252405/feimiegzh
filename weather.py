@@ -61,7 +61,7 @@ def get_weather() -> str:
     }
 
     try:
-        resp = requests.post(DOUBAO_URL, headers=headers, json=data, timeout=30)
+        resp = requests.post(DOUBAO_URL, headers=headers, json=data, timeout=60)
     except requests.RequestException as e:
         raise RuntimeError(f"Request to DOUBAO failed: {e}") from e
 
