@@ -72,6 +72,22 @@ def get_weather_icon(desc):
     return "☁️"
 
 
+def extract_from_html_direct(html):
+    """从网页直接提取天气数据"""
+    import re
+    weather_data = []
+
+    # 匹配时间、温度、降雨概率、云量
+    pattern = r'(\d{1,2}):00.*?(\d+)°.*?(\d+)%.*?cloudCover.*?(\d+)%'
+    matches = re.findall(pattern, html, re.DOTALL)
+
+    for match in matches:
+        hour, temp, precip, cloud = match
+        weather_data.append((f"{int(hour):02d}", temp, precip, cloud))
+
+    return weather_data
+
+
 def parse_weather_from_web():
     """从 weather.com 网页获取天气数据"""
     headers = {
@@ -95,33 +111,43 @@ def parse_weather_from_web():
 
     html = resp.text
 
-    # 尝试从页面中提取 JSON 数据
-    # weather.com 会在页面中嵌入小时预报数据
-    pattern = r'window\.\w+\s*=\s*(\{.*?"hourlyForecast".*?\})'
-    match = re.search(pattern, html)
+    # 尝试多种模式提取 JSON 数据
+    patterns = [
+        r'window\.\w+\s*=\s*(\{.*?"hourlyForecast".*?\})',
+        r'"hourlyForecast"\s*:\s*(\[.*?\])',
+        r'hourlyForecast.*?(\[.*?\])',
+        r'"temp"\s*:\s*\{.*?\}',
+    ]
 
-    if not match:
-        # 尝试另一种模式
-        pattern2 = r'"hourlyForecast"\s*:\s*(\[.*?\])'
-        match = re.search(pattern2, html)
+    data = None
+    for pattern in patterns:
+        match = re.search(pattern, html, re.DOTALL)
+        if match:
+            try:
+                json_str = match.group(1)
+                # 修复 JSON 格式
+                json_str = re.sub(r'([{,])(\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\3":', json_str)
+                data = json.loads(json_str)
+                if data:
+                    break
+            except:
+                continue
 
-    if not match:
+    if not data:
         raise RuntimeError("无法解析天气数据，页面结构可能已变化")
 
-    try:
-        # 提取并解析 JSON
-        json_str = match.group(1) if match.lastindex else match.group(0)
-        # 修复 JSON 格式问题
-        json_str = re.sub(r'([{,])(\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\3":', json_str)
-        data = json.loads(json_str)
-    except json.JSONDecodeError as e:
-        raise RuntimeError(f"JSON 解析失败: {e}")
-
     # 提取小时预报，返回 (小时, 温度, 降雨概率) 列表
-    hourly = data.get("hourlyForecast", []) if isinstance(data, dict) else data
+    # 尝试多种数据结构
+    hourly = []
+    if isinstance(data, dict):
+        hourly = data.get("hourlyForecast", []) or data.get("hours", []) or data.get("data", [])
+    elif isinstance(data, list):
+        hourly = data
 
     if not hourly:
-        raise RuntimeError("未找到小时预报数据")
+        # 尝试从网页直接提取温度和降雨概率
+        print("尝试从网页直接提取数据...")
+        hourly = extract_from_html_direct(html)
 
     # 返回温度和降雨概率列表
     weather_data = []
