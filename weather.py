@@ -117,23 +117,20 @@ def parse_weather_from_web():
     except json.JSONDecodeError as e:
         raise RuntimeError(f"JSON 解析失败: {e}")
 
-    # 提取小时预报
+    # 提取小时预报，返回 (小时, 温度, 降雨概率) 列表
     hourly = data.get("hourlyForecast", []) if isinstance(data, dict) else data
 
     if not hourly:
         raise RuntimeError("未找到小时预报数据")
 
-    # 构建天气信息
-    results = []
-    now_hour = time.localtime().tm_hour
+    # 返回温度和降雨概率列表
+    weather_data = []
 
     for hour_data in hourly[:25]:  # 取25小时数据
         try:
             time_str = hour_data.get("time", "")
             temp = hour_data.get("temp", {}).get("value", "")
-            unit = hour_data.get("temp", {}).get("unit", "C")
             precip = hour_data.get("precipChance", {}).get("value", "0")
-            wx_phrase = hour_data.get("wxPhraseLong", "")
 
             # 提取小时数
             hour_match = re.search(r'(\d{1,2}):00', time_str)
@@ -142,37 +139,131 @@ def parse_weather_from_web():
             else:
                 continue
 
-            # 转换天气描述为中文
-            weather_desc = get_weather_desc(wx_phrase)
-            icon = get_weather_icon(wx_phrase)
-
-            line1 = f"【{hour:02d}:00】{weather_desc}{icon}"
-            line2 = f"温度{temp}°{unit}  降雨{precip}%"
-            results.append(line1)
-            results.append(line2)
+            weather_data.append((f"{hour:02d}", temp, precip))
 
         except Exception as e:
             continue
 
-    if not results:
+    if not weather_data:
         raise RuntimeError("未能解析任何天气数据")
+
+    return weather_data
+
+
+def get_weather():
+    """获取天气预报 - 豆包API获取天气描述 + weather.com获取温度和降雨概率"""
+    # 获取豆包API的天气描述（天气图标和文字）
+    weather_info = {}
+    if DOUBAO_API_KEY:
+        try:
+            print("使用豆包API获取天气描述...")
+            weather_info = get_weather_desc_from_api()
+        except Exception as e:
+            print(f"豆包API失败: {e}")
+
+    # 获取weather.com的温度和降雨概率
+    print("从weather.com获取温度和降雨概率...")
+    web_weather = parse_weather_from_web()
+
+    # 合并数据
+    results = []
+    for hour_str, temp, precip in web_weather:
+        # 从豆包获取天气描述和图标，如果没有则用默认值
+        if hour_str in weather_info:
+            desc, icon = weather_info[hour_str]
+        else:
+            desc, icon = "晴", "☀️"
+
+        line1 = f"【{hour_str}】{desc}{icon}"
+        line2 = f"温度{temp}°C  降雨{precip}%"
+        results.append(line1)
+        results.append(line2)
+
+    if not results:
+        raise RuntimeError("未能获取任何天气数据")
 
     return "\n".join(results)
 
 
-def get_weather():
-    """获取天气预报 - 优先使用豆包API"""
-    # 优先使用豆包API（更准确）
-    if DOUBAO_API_KEY:
-        try:
-            print("尝试使用豆包API获取天气...")
-            return get_weather_from_api()
-        except Exception as e:
-            print(f"豆包API失败: {e}")
+def get_weather_desc_from_api():
+    """从豆包API获取天气描述和图标"""
+    api_key = require_env("DOUBAO_API_KEY")
 
-    # 备用：从 weather.com 获取
-    print("尝试从 weather.com 获取天气数据...")
-    return parse_weather_from_web()
+    prompt = """
+请生成 厦门市同安区 大同街道 & 祥平街道 今天 18:00~明天 12:00 逐小时天气预报。
+只输出天气描述和图标，不要其他文字。
+
+格式如下，每小时一行：
+18:00 晴☀️
+19:00 多云⛅
+20:00 阴☁️
+...
+
+使用以下图标：
+晴 ☀️ 多云 ⛅ 阴 ☁️ 晴云 🌤 云阴 🌥 小雨 🌦 中雨 🌧 大雨 🌨 雷雨 ⛈
+只输出 18:00 到次日 12:00，每小时一条。
+""".strip()
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    data = {
+        "model": "doubao-seed-2-0-pro-260215",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.2,
+    }
+
+    for attempt in range(3):
+        try:
+            resp = requests.post(
+                "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
+                headers=headers,
+                json=data,
+                timeout=120
+            )
+            break
+        except requests.exceptions.Timeout:
+            if attempt < 2:
+                print(f"请求超时，重试 {attempt + 1}/3...")
+                time.sleep(attempt + 1)
+            else:
+                raise RuntimeError("请求超时")
+
+    if not resp.ok:
+        raise RuntimeError(f"API HTTP {resp.status_code}")
+
+    resp_json = resp.json()
+    if resp_json.get("error"):
+        raise RuntimeError(f"API error: {resp_json['error']}")
+
+    content = resp_json["choices"][0]["message"]["content"]
+
+    # 解析豆包返回的天气描述
+    weather_dict = {}
+    for line in content.strip().split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        # 格式: 18:00 晴☀️
+        match = re.match(r'(\d{1,2}):00\s+(.+)', line)
+        if match:
+            hour = match.group(1)
+            desc_icon = match.group(2).strip()
+            # 提取文字和图标
+            icon = ""
+            for i in desc_icon:
+                if i in "☀️⛅☁️🌤🌥🌦🌧🌨⛈":
+                    icon = i
+                    desc = desc_icon.replace(icon, "").strip()
+                    break
+            if not icon:
+                desc = desc_icon
+                icon = "☀️"
+            weather_dict[hour] = (desc, icon)
+
+    return weather_dict
 
 
 def get_weather_from_api():
