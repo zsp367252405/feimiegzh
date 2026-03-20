@@ -294,7 +294,7 @@ def get_weather():
         except:
             hour_cn = hour_str
 
-        line1 = f"【{hour_str}】 {desc}{icon}"
+        line1 = f"【{hour_str}】{desc}{icon}"
         line2 = f"云量{cloud_text} 温度{temp}°C"
         line3 = f"降雨{precip}% 雨量{rain}mm"
         results.append(line1)
