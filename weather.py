@@ -22,10 +22,16 @@ WEATHER_DESC = {
     "clear": "晴",
     "rain": "雨",
     "light rain": "小雨",
+    "moderate rain": "中雨",
     "heavy rain": "大雨",
+    "drizzle": "小雨",
+    "showers": "阵雨",
+    "scattered showers": "阵雨",
     "thunderstorms": "雷雨",
+    "tstorms": "雷雨",
     "snow": "雪",
     "fog": "雾",
+    "mist": "雾",
     "wind": "风",
 }
 
