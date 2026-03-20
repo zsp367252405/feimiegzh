@@ -217,44 +217,9 @@ def parse_weather_from_web():
 
 
 def get_weather():
-    """获取天气预报 - 豆包API获取天气描述 + weather.com获取温度和降雨概率"""
-    # 获取豆包API的天气描述（天气图标和文字）
-    weather_info = {}
-    if DOUBAO_API_KEY:
-        try:
-            print("使用豆包API获取天气描述...")
-            weather_info = get_weather_desc_from_api()
-        except Exception as e:
-            print(f"豆包API失败: {e}")
-
-    # 获取weather.com的温度和降雨概率
-    print("从weather.com获取温度和降雨概率...")
-    web_weather = parse_weather_from_web()
-
-    # 合并数据
-    results = []
-    for hour_str, temp, precip, cloud in web_weather:
-        # 从豆包获取天气描述和图标，如果没有则用默认值
-        if hour_str in weather_info:
-            desc, icon = weather_info[hour_str]
-        else:
-            desc, icon = "晴", "☀️"
-
-        # 云量用百分比显示
-        try:
-            cloud_text = f"{int(cloud)}%"
-        except:
-            cloud_text = "0%"
-
-        line1 = f"【{hour_str}】{desc}{icon}"
-        line2 = f"温度{temp}°C  降雨{precip}%  云量{cloud_text}"
-        results.append(line1)
-        results.append(line2)
-
-    if not results:
-        raise RuntimeError("未能获取任何天气数据")
-
-    return "\n".join(results)
+    """获取天气预报 - 使用豆包API生成所有数据"""
+    # 直接使用豆包API生成完整天气数据
+    return get_weather_from_api()
 
 
 def get_weather_desc_from_api():
