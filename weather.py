@@ -280,8 +280,18 @@ def get_weather():
         except:
             cloud_text = "0%"
 
-        line1 = f"【{hour_str}】{desc}{icon}"
-        line2 = f"温度{temp}°C  降雨{precip}%  云量{cloud_text}"
+        # 转换小时为中文格式（如 7点、13点）
+        try:
+            hour_int = int(hour_str)
+            if hour_int == 0:
+                hour_cn = "0点"
+            else:
+                hour_cn = f"{hour_int}点"
+        except:
+            hour_cn = hour_str
+
+        line1 = f"【{hour_cn}】{desc}{icon}  降雨{precip}%"
+        line2 = f"温度{temp}°C  云量{cloud_text}"
         results.append(line1)
         results.append(line2)
 
