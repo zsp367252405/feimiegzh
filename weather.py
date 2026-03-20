@@ -175,19 +175,11 @@ def get_weather():
         else:
             desc, icon = "晴", "☀️"
 
-        # 转换云量
+        # 云量用百分比显示
         try:
-            cc = int(cloud)
-            if cc <= 20:
-                cloud_text = "晴"
-            elif cc <= 50:
-                cloud_text = "少云"
-            elif cc <= 80:
-                cloud_text = "多云"
-            else:
-                cloud_text = "阴"
+            cloud_text = f"{int(cloud)}%"
         except:
-            cloud_text = "多云"
+            cloud_text = "0%"
 
         line1 = f"【{hour_str}】{desc}{icon}"
         line2 = f"温度{temp}°C  降雨{precip}%  云量{cloud_text}"
