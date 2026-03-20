@@ -82,7 +82,8 @@ def extract_from_html_direct(html):
     if matches:
         for match in matches:
             hour, temp, precip, cloud = match
-            weather_data.append((f"{int(hour):02d}", temp, precip, cloud))
+            # 返回7个值，包含天气描述和图标（为空，用豆包备用）
+            weather_data.append((f"{int(hour):02d}", temp, precip, cloud, "0", "", ""))
         return weather_data
     
     # 方法 2: 分别提取
@@ -97,7 +98,8 @@ def extract_from_html_direct(html):
         hour = int(times[i])
         temp = temps[i]
         precip = precips[i] if i < len(precips) else "0"
-        weather_data.append((f"{hour:02d}", temp, precip, "0"))
+        # 返回7个值，包含天气描述和图标（为空，用豆包备用）
+        weather_data.append((f"{hour:02d}", temp, precip, "0", "0", "", ""))
     
     return weather_data
 
@@ -156,25 +158,25 @@ def parse_weather_from_web():
             # 使用默认数据
             print("警告：无法解析天气数据，使用默认数据")
             return [
-                ("18", "20", "1", "70", "0"),
-                ("19", "19", "2", "60", "0"),
-                ("20", "18", "2", "50", "0"),
-                ("21", "18", "2", "30", "0"),
-                ("22", "17", "2", "25", "0"),
-                ("23", "17", "2", "30", "0"),
-                ("00", "17", "4", "45", "0"),
-                ("01", "17", "1", "50", "0"),
-                ("02", "17", "2", "50", "0"),
-                ("03", "17", "2", "65", "0"),
-                ("04", "17", "2", "65", "0"),
-                ("05", "17", "1", "65", "0"),
-                ("06", "17", "1", "70", "0"),
-                ("07", "17", "0", "70", "0"),
-                ("08", "18", "0", "60", "0"),
-                ("09", "19", "0", "50", "0"),
-                ("10", "20", "0", "40", "0"),
-                ("11", "21", "0", "30", "0"),
-                ("12", "22", "0", "20", "0"),
+                ("18", "20", "1", "70", "0", "晴", "☀️"),
+                ("19", "19", "2", "60", "0", "多云", "⛅"),
+                ("20", "18", "2", "50", "0", "多云", "⛅"),
+                ("21", "18", "2", "30", "0", "晴", "☀️"),
+                ("22", "17", "2", "25", "0", "晴", "☀️"),
+                ("23", "17", "2", "30", "0", "晴", "☀️"),
+                ("00", "17", "4", "45", "0", "晴", "☀️"),
+                ("01", "17", "1", "50", "0", "晴", "☀️"),
+                ("02", "17", "2", "50", "0", "晴", "☀️"),
+                ("03", "17", "2", "65", "0", "多云", "⛅"),
+                ("04", "17", "2", "65", "0", "多云", "⛅"),
+                ("05", "17", "1", "65", "0", "多云", "⛅"),
+                ("06", "17", "1", "70", "0", "多云", "⛅"),
+                ("07", "17", "0", "70", "0", "多云", "⛅"),
+                ("08", "18", "0", "60", "0", "多云", "⛅"),
+                ("09", "19", "0", "50", "0", "晴", "☀️"),
+                ("10", "20", "0", "40", "0", "晴", "☀️"),
+                ("11", "21", "0", "30", "0", "晴", "☀️"),
+                ("12", "22", "0", "20", "0", "晴", "☀️"),
             ]
         
         return hourly
@@ -238,7 +240,16 @@ def parse_weather_from_web():
             else:
                 continue
 
-            weather_data.append((f"{hour:02d}", temp, precip, cloud_cover, rain_amount))
+            # 获取天气描述和图标
+            wx_phrase = hour_data.get("wxPhraseLong", "")
+            if not wx_phrase:
+                wx_phrase = hour_data.get("wxPhraseShort", "")
+            
+            # 转换天气描述为中文
+            weather_desc = get_weather_desc(wx_phrase)
+            icon = get_weather_icon(wx_phrase)
+            
+            weather_data.append((f"{hour:02d}", temp, precip, cloud_cover, rain_amount, weather_desc, icon))
 
         except Exception as e:
             continue
@@ -271,12 +282,17 @@ def get_weather():
 
     # 合并数据
     results = []
-    for hour_str, temp, precip, cloud, rain in web_weather:
-        # 从豆包获取天气描述和图标，如果没有则用默认值
-        if hour_str in weather_info:
-            desc, icon = weather_info[hour_str]
+    for item in web_weather:
+        # weather.com 数据格式: (小时, 温度, 降雨概率, 云量, 雨量, 天气描述, 图标)
+        if len(item) >= 7:
+            hour_str, temp, precip, cloud, rain, desc, icon = item[:7]
         else:
-            desc, icon = "晴", "☀️"
+            # 如果没有天气描述，用豆包或默认值
+            hour_str, temp, precip, cloud, rain = item[:5]
+            if hour_str in weather_info:
+                desc, icon = weather_info[hour_str]
+            else:
+                desc, icon = "晴", "☀️"
 
         # 云量用百分比显示
         try:
