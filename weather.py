@@ -175,11 +175,11 @@ def get_weather_from_api():
 
     prompt = """
 你是专业天气预报员。
-请生成 厦门市同安区 大同街道 & 祥平街道 今天 06:00~明天 06:00 逐小时天气预报。
+请生成 厦门市同安区 大同街道 & 祥平街道 今天 18:00~明天 12:00 逐小时天气预报。
 严格按下面格式输出，不要多余文字，不要解释，只输出预报：
 
 请按以下格式输出，每小时2行：
-第一行：【06:00】晴☀️
+第一行：【18:00】晴☀️
 第二行：温度21°C  降雨1%
 
 使用下面固定图标，不能用其他：
@@ -193,7 +193,7 @@ def get_weather_from_api():
 大雨 🌨
 雷阵雨 ⛈
 
-只输出 06:00—次日06:00，共24小时。
+只输出 18:00—次日12:00，共18小时。
 """.strip()
 
     headers = {
@@ -248,7 +248,7 @@ def send_feishu(content):
     msg = {
         "msg_type": "text",
         "content": {
-            "text": f"🌤 厦门同安 每日天气预报（06:00-次日06:00）\n\n{content}"
+            "text": f"🌤 厦门同安 每日天气预报（18:00-次日12:00）\n\n{content}"
         },
     }
     resp = requests.post(webhook, json=msg, timeout=30)
@@ -263,7 +263,7 @@ def send_server_chan(content):
     url = f"https://sctapi.ftqq.com/{key}.send"
 
     data = {
-        "title": "🌤 厦门同安每日天气预报（06:00-次日06:00）",
+        "title": "🌤 厦门同安每日天气预报（18:00-次日12:00）",
         "desp": content
     }
 

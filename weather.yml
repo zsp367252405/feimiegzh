@@ -3,8 +3,8 @@ name: Weather Bot
 on:
   workflow_dispatch:
   schedule:
-    # 每天 22:00 UTC（中国时间次日 06:00）
-    - cron: "0 22 * * *"
+    # 每天 10:00 UTC（中国时间 18:00）
+    - cron: "0 10 * * *"
 
 jobs:
   run:
