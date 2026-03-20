@@ -131,6 +131,7 @@ def parse_weather_from_web():
             time_str = hour_data.get("time", "")
             temp = hour_data.get("temp", {}).get("value", "")
             precip = hour_data.get("precipChance", {}).get("value", "0")
+            cloud_cover = hour_data.get("cloudCover", {}).get("value", "0")
 
             # 提取小时数
             hour_match = re.search(r'(\d{1,2}):00', time_str)
@@ -139,7 +140,7 @@ def parse_weather_from_web():
             else:
                 continue
 
-            weather_data.append((f"{hour:02d}", temp, precip))
+            weather_data.append((f"{hour:02d}", temp, precip, cloud_cover))
 
         except Exception as e:
             continue
@@ -167,15 +168,29 @@ def get_weather():
 
     # 合并数据
     results = []
-    for hour_str, temp, precip in web_weather:
+    for hour_str, temp, precip, cloud in web_weather:
         # 从豆包获取天气描述和图标，如果没有则用默认值
         if hour_str in weather_info:
             desc, icon = weather_info[hour_str]
         else:
             desc, icon = "晴", "☀️"
 
+        # 转换云量
+        try:
+            cc = int(cloud)
+            if cc <= 20:
+                cloud_text = "晴"
+            elif cc <= 50:
+                cloud_text = "少云"
+            elif cc <= 80:
+                cloud_text = "多云"
+            else:
+                cloud_text = "阴"
+        except:
+            cloud_text = "多云"
+
         line1 = f"【{hour_str}】{desc}{icon}"
-        line2 = f"温度{temp}°C  降雨{precip}%"
+        line2 = f"温度{temp}°C  降雨{precip}%  云量{cloud_text}"
         results.append(line1)
         results.append(line2)
 
