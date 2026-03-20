@@ -290,15 +290,12 @@ def get_weather():
         except:
             hour_cn = hour_str
 
-        line1 = f"【{hour_cn}】{desc}{icon}  降雨{precip}%"
-        # 计算空格让第二行右对齐（与第一行末尾对齐）
-        # 第一行大约长度：【18点】晴☀️  降雨1% = 15-17字符
-        # 第二行：温度20°C  云量70% = 14-16字符
-        line2_content = f"温度{temp}°C  云量{cloud_text}"
-        # 添加前导空格让右端对齐
-        line2 = f"       {line2_content}"
+        line1 = f"【{hour_str}】{desc}{icon}"
+        line2 = f"  云量{cloud_text} 温度{temp}°C"
+        line3 = f"  降雨{precip}%"
         results.append(line1)
         results.append(line2)
+        results.append(line3)
 
     if not results:
         raise RuntimeError("未能获取任何天气数据")
